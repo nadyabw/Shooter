@@ -1,33 +1,21 @@
 using System;
 using UnityEngine;
 
-public class Player : MonoBehaviour
+public class Player : BaseShootingUnit
 {
     #region Variables
 
-    [Header("Shooting")] [SerializeField] private GameObject bulletPrefab;
-    [SerializeField] private Transform bulletSpawnPoint;
-    [SerializeField] private float shootDelay = 0.25f;
-
-    [Header("Health")] [SerializeField] private float healthMax;
-    [SerializeField] private HealthBar healthBarPrefab;
-    [SerializeField] private Transform healthBarPosition;
-
-    [Header("Animation")] [SerializeField] private Animator animator;
+    [Header("Movement")]
+    [SerializeField] private PlayerMovement playerMovement;
 
     private static Player instance;
-
     private float timeToNextShoot;
-
-    private HealthBar healthBar;
-    private float currentHealth;
 
     #endregion
 
     #region Properties
 
     public static Player Instance => instance;
-    public bool IsDied { get; private set; }
 
     #endregion
 
@@ -42,10 +30,6 @@ public class Player : MonoBehaviour
     private void Awake()
     {
         instance = this;
-
-        currentHealth = healthMax;
-        healthBar = Instantiate(healthBarPrefab);
-        healthBar.SetParentAndOffset(gameObject, healthBarPosition.localPosition);
     }
 
     private void Update()
@@ -66,66 +50,25 @@ public class Player : MonoBehaviour
 
         if (Input.GetButton("Fire1") && timeToNextShoot <= 0)
         {
-            CreateBullet();
+            Shoot();
             timeToNextShoot = shootDelay;
-            PlayShootAnimation();
         }
     }
 
-
-    private void CreateBullet()
+    protected override void Die()
     {
-        Instantiate(bulletPrefab, bulletSpawnPoint.position, transform.rotation);
-    }
+        base.Die();
 
-    private void OnTriggerEnter2D(Collider2D collision)
-    {
-        DamageDealer dd = collision.gameObject.GetComponent<DamageDealer>();
-
-        if (dd)
-        {
-            HandleDamage(dd.Damage);
-        }
-    }
-
-    private void HandleDamage(float damage)
-    {
-        currentHealth -= damage;
-        UpdateHealthBar();
-
-        if (currentHealth <= 0)
-        {
-            Die();
-        }
-    }
-
-    private void UpdateHealthBar()
-    {
-        healthBar.UpdateHealthState(currentHealth / healthMax);
-    }
-
-    private void Die()
-    {
-        IsDied = true;
+        playerMovement.Stop();
+        playerMovement.enabled = false;
         OnDied?.Invoke();
-
-        PlayDeathAnimation();
-
-        Destroy(GetComponent<Collider2D>());
-        Destroy(healthBar.gameObject);
     }
 
-    private void PlayShootAnimation()
-    {
-        animator.SetTrigger(AnimationIdHelper.GetId(AnimationState.Shoot));
-    }
+    #endregion
 
-    private void PlayDeathAnimation()
-    {
-        animator.SetTrigger(AnimationIdHelper.GetId(AnimationState.Death));
-    }
+    #region Public methods
 
-    public void AddHealth(float amount)
+    public void HandleHealthCollect(float amount)
     {
         currentHealth += amount;
 

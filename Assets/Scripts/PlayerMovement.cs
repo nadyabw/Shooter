@@ -4,12 +4,12 @@ public class PlayerMovement : MonoBehaviour
 {
     #region Variables
 
+    [SerializeField] private Transform bodyTransform;
     [SerializeField] private float speed = 15f;
     [SerializeField] private Animator animator;
 
     private Rigidbody2D rb;
-    private Player player;
-    private bool isStopped = false;
+    private Transform cachedTransform;
 
     #endregion
 
@@ -17,22 +17,12 @@ public class PlayerMovement : MonoBehaviour
 
     private void Start()
     {
-        player = Player.Instance;
         rb = GetComponent<Rigidbody2D>();
+        cachedTransform = transform;
     }
 
     private void Update()
     {
-        if (player.IsDied)
-        {
-            if (!isStopped)
-            {
-                StopMovement();
-            }
-
-            return;
-        }
-
         Move();
         Rotate();
     }
@@ -45,27 +35,26 @@ public class PlayerMovement : MonoBehaviour
     {
         float horizontal = Input.GetAxis("Horizontal");
         float vertical = Input.GetAxis("Vertical");
-        Vector2 dir = new Vector2(horizontal, vertical);
+        Vector2 dir = Vector2.ClampMagnitude(new Vector2(horizontal, vertical), 1f);
 
         rb.velocity = dir * speed;
 
-        animator.SetFloat(AnimationIdHelper.GetId(AnimationState.Move), dir.magnitude);
+        animator.SetFloat(UnitAnimationIdHelper.GetId(UnitAnimationState.Move), dir.magnitude);
     }
 
     private void Rotate()
     {
         Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-        Vector3 dir = (mousePos - transform.position);
+        Vector3 dir = mousePos - cachedTransform.position;
 
-        transform.up = -(Vector2) dir;
-    }
-
-    private void StopMovement()
-    {
-        rb.velocity = Vector2.zero;
-        rb.angularVelocity = 0;
-        isStopped = true;
+        bodyTransform.up = -(Vector2) dir;
     }
 
     #endregion
+
+    public void Stop()
+    {
+        rb.velocity = Vector2.zero;
+        rb.angularVelocity = 0;
+    }
 }

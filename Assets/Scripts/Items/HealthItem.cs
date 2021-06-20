@@ -12,6 +12,6 @@ public class HealthItem : BaseItem
 
     protected override void HandleCollect()
     {
-        Player.Instance.AddHealth(healthAmount);
+        Player.Instance.HandleHealthCollect(healthAmount);
     }
 }

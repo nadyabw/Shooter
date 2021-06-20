@@ -10,7 +10,7 @@ public class Game : MonoBehaviour
 
     #endregion
 
-    #region Private methods
+    #region Unity lifecycle
 
     private void OnEnable()
     {
@@ -21,6 +21,10 @@ public class Game : MonoBehaviour
     {
         Player.OnDied -= HandlePlayerDeath;
     }
+
+    #endregion
+
+    #region Private methods
 
     private void HandlePlayerDeath()
     {
