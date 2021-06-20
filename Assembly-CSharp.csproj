@@ -52,15 +52,22 @@
     <ImplicitlyExpandDesignTimeFacades>false</ImplicitlyExpandDesignTimeFacades>
   </PropertyGroup>
   <ItemGroup>
+     <Compile Include="Assets\Scripts\LayerNames.cs" />
      <Compile Include="Assets\Scripts\Game.cs" />
      <Compile Include="Assets\Scripts\Tags.cs" />
      <Compile Include="Assets\Scripts\Items\HealthItem.cs" />
+     <Compile Include="Assets\Scripts\Zombie.cs" />
+     <Compile Include="Assets\Scripts\ZombieMovement.cs" />
      <Compile Include="Assets\Scripts\Items\BaseItem.cs" />
+     <Compile Include="Assets\Scripts\ObjectAnimationIdHelper.cs" />
+     <Compile Include="Assets\Scripts\BaseShootingUnit.cs" />
+     <Compile Include="Assets\Scripts\DamageableObject.cs" />
+     <Compile Include="Assets\Scripts\ExplosiveBarrel.cs" />
      <Compile Include="Assets\Scripts\Enemy.cs" />
      <Compile Include="Assets\Scripts\Bullet.cs" />
      <Compile Include="Assets\Scripts\DamageDealer.cs" />
      <Compile Include="Assets\Scripts\Player.cs" />
-     <Compile Include="Assets\Scripts\AnimationIdHelper.cs" />
+     <Compile Include="Assets\Scripts\UnitAnimationIdHelper.cs" />
      <Compile Include="Assets\Scripts\HealthBar.cs" />
      <Compile Include="Assets\Scripts\PlayerMovement.cs" />
  <Reference Include="UnityEngine">
