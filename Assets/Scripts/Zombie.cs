@@ -92,6 +92,7 @@ public class Zombie : DamageableObject
         {
             patrolPositions.Add(patrolPointsTransform.GetChild(i).transform.position);
         }
+        patrolPointsTransform.gameObject.SetActive(false);
 
         if(patrolPositions.Count >= 2)
         {
@@ -208,6 +209,7 @@ public class Zombie : DamageableObject
         targetPosition += (playerTransform.position - targetPosition) / (targetUpdateDelayFactor * 10f);
         zombieMovement.SetTargetPosition(targetPosition);
     }
+
     private void UpdateRagePursuit()
     {
         targetPosition = playerTransform.position;
@@ -284,12 +286,27 @@ public class Zombie : DamageableObject
 
         Gizmos.color = Color.magenta;
 
-        for (int i = 0; i < patrolPointsTransform.childCount; i++)
+        // в PlayMode рисуем маршрут по точкам в мировых координатах
+        if(UnityEditor.EditorApplication.isPlaying)
         {
-            if ((i + 1) < patrolPointsTransform.childCount)
-                Gizmos.DrawLine(patrolPointsTransform.GetChild(i).transform.position, patrolPointsTransform.GetChild(i + 1).transform.position);
-            else
-                Gizmos.DrawLine(patrolPointsTransform.GetChild(i).transform.position, patrolPointsTransform.GetChild(0).transform.position);
+            for (int i = 0; i < patrolPositions.Count; i++)
+            {
+                if ((i + 1) < patrolPositions.Count)
+                    Gizmos.DrawLine(patrolPositions[i], patrolPositions[i + 1]);
+                else
+                    Gizmos.DrawLine(patrolPositions[i], patrolPositions[0]);
+            }
+        }
+        // в режиме редактирования рисуем маршрут по дочерним элементам patrolPoints
+        else
+        {
+            for (int i = 0; i < patrolPointsTransform.childCount; i++)
+            {
+                if ((i + 1) < patrolPointsTransform.childCount)
+                    Gizmos.DrawLine(patrolPointsTransform.GetChild(i).transform.position, patrolPointsTransform.GetChild(i + 1).transform.position);
+                else
+                    Gizmos.DrawLine(patrolPointsTransform.GetChild(i).transform.position, patrolPointsTransform.GetChild(0).transform.position);
+            }
         }
     }
 
