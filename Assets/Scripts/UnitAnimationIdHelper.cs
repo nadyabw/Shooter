@@ -1,7 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 
-public enum UnitAnimationState { Idle, Move, Shoot, Death }
+public enum UnitAnimationState { Idle, Move, Shoot, Death, Ressurect }
 
 public static class UnitAnimationIdHelper
 {
@@ -15,6 +15,7 @@ public static class UnitAnimationIdHelper
         animationIdMap.Add(UnitAnimationState.Move, Animator.StringToHash("MoveSpeed"));
         animationIdMap.Add(UnitAnimationState.Shoot, Animator.StringToHash("Shoot"));
         animationIdMap.Add(UnitAnimationState.Death, Animator.StringToHash("Death"));
+        animationIdMap.Add(UnitAnimationState.Ressurect, Animator.StringToHash("Ressurect"));
     }
 
     public static int GetId(UnitAnimationState state)

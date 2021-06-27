@@ -34,6 +34,7 @@ Transform:
   - {fileID: 136968841416082052}
   - {fileID: 5734682021363638992}
   - {fileID: 2837713517028743552}
+  - {fileID: 5709703645407179486}
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -49,16 +50,31 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1c076311b95e8bf4ea0b03cebe01c2f4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  pursuitRadius: 14
-  targetDetectionRadius: 12
-  attackRadius: 2
-  rageTime: 3
+  itemPrefab: {fileID: 904434689746462807, guid: 03a2955dc26159342949b67a89b6098c, type: 3}
+  itemGenerationProbability: 20
+  attackDelay: 0.8
   healthMax: 20
   healthBar: {fileID: 8489676144354923717}
-  attackDelay: 0.8
+  animator: {fileID: 2492868542710655248}
+  bodyTransform: {fileID: 136968841416082052}
+  distanceCompareDelta: 0.1
+  visionAngle: 90
+  visionCheckAngleStep: 5
+  rayCasterTransform: {fileID: 5709703645407179486}
+  allCollisionsMask:
+    serializedVersion: 2
+    m_Bits: 6272
+  obstaclesMask:
+    serializedVersion: 2
+    m_Bits: 6144
+  pursuitRadius: 14
+  targetDetectionVisionRadius: 10
+  targetDetectionAnywayRadius: 6
+  attackRadius: 2
+  rageTime: 3
   damageAmount: 2
   targetUpdateDelayFactor: 5
-  animator: {fileID: 2492868542710655248}
+  animationHandler: {fileID: 7631207786742831045}
   zombieMovement: {fileID: 2492868542174008771}
   patrolPointsTransform: {fileID: 2837713517028743552}
 --- !u!114 &2492868542174008771
@@ -124,6 +140,7 @@ GameObject:
   - component: {fileID: 2492868542710655254}
   - component: {fileID: 2492868542710655249}
   - component: {fileID: 2492868542710655248}
+  - component: {fileID: 7631207786742831045}
   m_Layer: 8
   m_Name: Sprite
   m_TagString: Untagged
@@ -215,6 +232,18 @@ Animator:
   m_HasTransformHierarchy: 1
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorControllerStateOnDisable: 0
+--- !u!114 &7631207786742831045
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2492868542710655251}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dfc3a4d91e5edde49b26a33e6a72f040, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &5366309680630494693
 GameObject:
   m_ObjectHideFlags: 0
@@ -245,6 +274,36 @@ Transform:
   - {fileID: 5228832874327337331}
   m_Father: {fileID: 2492868542174008768}
   m_RootOrder: 2
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &7777243613802421304
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5709703645407179486}
+  m_Layer: 8
+  m_Name: RayCaster
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5709703645407179486
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7777243613802421304}
+  m_LocalRotation: {x: 0, y: 0, z: 0.38268343, w: 0.92387956}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 2492868542174008768}
+  m_RootOrder: 3
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &8221323200108401295
 GameObject:

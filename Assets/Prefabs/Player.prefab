@@ -110,13 +110,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a00d675627472f1498d28a7a36a58de1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  bulletPrefab: {fileID: 345773664554655529, guid: a506cb82ad983d044ad84f894925ecb9, type: 3}
-  bulletSpawnPoint: {fileID: 5162958429005320501}
-  shootDelay: 0.25
-  healthMax: 20
+  itemPrefab: {fileID: 0}
+  itemGenerationProbability: 0
+  attackDelay: 0.25
+  healthMax: 25
   healthBar: {fileID: 2208328486752214219}
   animator: {fileID: 5162958428721827325}
   bodyTransform: {fileID: 862007793389010953}
+  distanceCompareDelta: 0.1
+  bulletPrefab: {fileID: 345773664554655529, guid: a506cb82ad983d044ad84f894925ecb9, type: 3}
+  bulletSpawnPoint: {fileID: 5162958429005320501}
   playerMovement: {fileID: 5162958430146612703}
 --- !u!114 &5162958430146612703
 MonoBehaviour:

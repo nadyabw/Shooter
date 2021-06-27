@@ -19,7 +19,7 @@ TagManager:
   - EnemyBullet
   - Item
   - ExplosiveObject
-  - 
+  - Obstacles
   - 
   - 
   - 
@@ -40,6 +40,9 @@ TagManager:
   - 
   - 
   m_SortingLayers:
+  - name: Ground
+    uniqueID: 2856419951
+    locked: 0
   - name: Default
     uniqueID: 0
     locked: 0

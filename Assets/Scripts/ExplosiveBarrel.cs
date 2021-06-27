@@ -1,6 +1,7 @@
+using System.Collections;
 using UnityEngine;
 
-public class ExplosiveBarrel : DamageableObject
+public class ExplosiveBarrel : DamageableObject, IExplosive
 {
     #region Variables
 
@@ -8,6 +9,8 @@ public class ExplosiveBarrel : DamageableObject
     [SerializeField] private float damage = 10f;
     [SerializeField] private float damageRadius = 2f;
     [SerializeField] private float healthAmount = 5f;
+    [SerializeField] private float chainExplosionDelay = 0.25f;
+    [SerializeField] private LayerMask layerMask;
 
     [Header("Animation")]
     [SerializeField] private Animator animator;
@@ -21,9 +24,17 @@ public class ExplosiveBarrel : DamageableObject
         animator.SetTrigger(ObjectAnimationIdHelper.GetId(ObjectAnimationName.BarrelExplosion));
     }
 
+    // Used in animation
     private void OnExplosionCompleted()
     {
         Destroy(gameObject);
+    }
+
+    private IEnumerator UpdateChainExplosionDelay(float delayedDamage)
+    {
+        yield return new WaitForSeconds(chainExplosionDelay);
+
+        HandleDamage(delayedDamage);
     }
 
     private void OnDrawGizmos()
@@ -39,20 +50,39 @@ public class ExplosiveBarrel : DamageableObject
         healthAmount -= damageAmount;
         if (healthAmount <= 0)
         {
-            PlayExplosionAnimation();
-            GetComponent<Collider2D>().enabled = false;
+            Explode();
+        }
+    }
 
-            LayerMask lMask = LayerMask.GetMask(LayerNames.Enemy, LayerNames.Player, LayerNames.ExplosiveObject);
-            Collider2D[] objectsInRadius = Physics2D.OverlapCircleAll(transform.position, damageRadius, lMask);
+    public void Explode()
+    {
+        PlayExplosionAnimation();
+        GetComponent<Collider2D>().enabled = false;
 
-            foreach (Collider2D obj in objectsInRadius)
+        Collider2D[] objectsInRadius = Physics2D.OverlapCircleAll(transform.position, damageRadius, layerMask);
+
+        foreach (Collider2D obj in objectsInRadius)
+        {
+            DamageableObject dObj = obj.GetComponent<DamageableObject>();
+            if (dObj != null)
             {
-                DamageableObject dObj = obj.gameObject.GetComponent<DamageableObject>();
-                if (dObj != null)
-                {
+                IExplosive iExpl = dObj.GetComponent<IExplosive>();
+                if (iExpl != null)
+                    iExpl.HandleChainExplosionDamage(damage);
+                else
                     dObj.HandleDamage(damage);
-                }
             }
         }
     }
+
+    public void HandleChainExplosionDamage(float delayedDamage)
+    {
+        StartCoroutine(UpdateChainExplosionDelay(delayedDamage));
+    }
+}
+
+public interface IExplosive
+{
+    public void Explode();
+    public void HandleChainExplosionDamage(float damage);
 }

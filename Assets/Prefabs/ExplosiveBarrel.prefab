@@ -135,5 +135,8 @@ MonoBehaviour:
   damage: 15
   damageRadius: 2.5
   healthAmount: 5
-  destructionDelay: 0.75
+  chainExplosionDelay: 0.3
+  layerMask:
+    serializedVersion: 2
+    m_Bits: 2432
   animator: {fileID: 4543405907981049651}

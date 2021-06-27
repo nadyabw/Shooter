@@ -127,7 +127,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0b161f139e607354d8d0e0c5c1e201e2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  healthProgress: {fileID: 1061265070882179287}
+  healthProgressTransform: {fileID: 6266587738556987655}
+  valueChangeTime: 2
 --- !u!1 &6030034047245686109
 GameObject:
   m_ObjectHideFlags: 0

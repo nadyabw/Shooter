@@ -1,46 +1,46 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Zombie : DamageableObject
+public class Zombie : BaseUnit
 {
-    private enum State {Idle, ReturnToStartPosition, Patrol, Pursuit, RagePursuit, Attack, Dead }
+    protected enum State {Idle, ReturnToStartPosition, Patrol, Pursuit, RagePursuit, Attack, Dead }
 
     #region Variables
 
+    [Header("Vision")]
+    [Range(30, 360)]
+    [SerializeField] private float visionAngle;
+    [SerializeField] private float visionCheckAngleStep = 5f;
+    [SerializeField] private Transform rayCasterTransform;
+    [SerializeField] private LayerMask allCollisionsMask;
+    [SerializeField] private LayerMask obstaclesMask;
+
     [Header("Base settings")]
     [SerializeField] private float pursuitRadius = 14f;
-    [SerializeField] private float targetDetectionRadius = 10f;
+    [SerializeField] private float targetDetectionVisionRadius = 10f;
+    [SerializeField] private float targetDetectionAnywayRadius = 6f;
     [SerializeField] private float attackRadius = 2f;
     [SerializeField] private float rageTime = 5f;
 
-    [Header("Health")]
-    [SerializeField] private float healthMax;
-    [SerializeField] private HealthBar healthBar;
-
     [Header("Attack")]
-    [SerializeField] private float attackDelay = 1f;
     [SerializeField] private float damageAmount = 2f;
     [Range(1, 5)]
     [SerializeField] private int targetUpdateDelayFactor;
 
     [Header("Animation")]
-    [SerializeField] private Animator animator;
+    [SerializeField] private ZombieAnimationHandler animationHandler;
 
     [Header("Movement")]
-    [SerializeField] private ZombieMovement zombieMovement;
+    [SerializeField] protected BaseEnemyMovement zombieMovement;
     [SerializeField] private Transform patrolPointsTransform;
 
     private Player player;
     private Transform playerTransform;
 
-    private Transform cachedTransform;
-
     private Vector3 targetPosition;
     private Vector3 startPosition;
-    private float timeToNextAttack;
 
     private State currentState;
-    private float currentHealth;
     private float currentRageTime;
 
     private bool isPatrolRole;
@@ -54,16 +54,23 @@ public class Zombie : DamageableObject
     private void OnEnable()
     {
         Player.OnDied += HandlePlayerDeath;
+
+        // отслеживаем смерть босса
+        ZombieBoss.OnDied += HandleBossDeath;
+
+        animationHandler.OnAttackPerformed += DoDamage;
     }
 
     private void OnDisable()
     {
         Player.OnDied -= HandlePlayerDeath;
+        ZombieBoss.OnDied -= HandleBossDeath;
+        animationHandler.OnAttackPerformed -= DoDamage;
     }
 
-    private void Start()
+    protected override void Start()
     {
-        cachedTransform = transform;
+        base.Start();
 
         player = Player.Instance;
         playerTransform = player.transform;
@@ -73,10 +80,9 @@ public class Zombie : DamageableObject
 
     private void Update()
     {
-        if ((currentState == State.Dead) || player.IsDied)
-            return;
+        if ((currentState != State.Dead) && !player.IsDied)
+            CheckState();
 
-        CheckState();
         UpdateCurrentState();
     }
 
@@ -86,11 +92,9 @@ public class Zombie : DamageableObject
 
     private void Init()
     {
-        currentHealth = healthMax;
-
         for (int i = 0; i < patrolPointsTransform.childCount; i++)
         {
-            patrolPositions.Add(patrolPointsTransform.GetChild(i).transform.position);
+            patrolPositions.Add(patrolPointsTransform.GetChild(i).position);
         }
         patrolPointsTransform.gameObject.SetActive(false);
 
@@ -101,7 +105,7 @@ public class Zombie : DamageableObject
         }
         else
         {
-            startPosition = cachedTransform.position;
+            targetPosition = startPosition = cachedTransform.position;
             SetState(State.Idle);
         }
     }
@@ -114,7 +118,11 @@ public class Zombie : DamageableObject
         {
             SetState(State.Attack);
         }
-        else if ((distance < targetDetectionRadius) && (currentState != State.RagePursuit))
+        else if ((distance < targetDetectionVisionRadius) && (IsPlayerVisible()) && (currentState != State.RagePursuit))
+        {
+            SetState(State.Pursuit);
+        }
+        else if ((distance < targetDetectionAnywayRadius) && (currentState != State.RagePursuit))
         {
             SetState(State.Pursuit);
         }
@@ -131,7 +139,7 @@ public class Zombie : DamageableObject
         }
     }
 
-    private void SetState(State state)
+    protected void SetState(State state)
     {
         switch (state)
         {
@@ -155,6 +163,10 @@ public class Zombie : DamageableObject
                 break;
             case State.Attack:
                 zombieMovement.StopMovement();
+                break;
+            case State.Dead:
+                zombieMovement.StopMovement();
+                zombieMovement.enabled = false;
                 break;
         }
 
@@ -180,39 +192,31 @@ public class Zombie : DamageableObject
             case State.Attack:
                 UpdateAttack();
                 break;
+            case State.Dead:
+                UpdateDead();
+                break;
         }
     }
 
-    private void OnTriggerEnter2D(Collider2D collision)
+    protected override void Attack()
     {
-        DamageDealer dd = collision.gameObject.GetComponent<DamageDealer>();
-        if (dd != null)
-        {
-            HandleDamage(dd.Damage);
-        }
+        PlayAttackAnimation();
     }
 
-    private void UpdateAttack()
+    private void DoDamage()
     {
-        timeToNextAttack -= Time.deltaTime;
-        if(timeToNextAttack <= 0)
-        {
-            PlayAttackAnimation();
-            player.HandleDamage(damageAmount);
-            timeToNextAttack = attackDelay;
-        }
+        player.HandleDamage(damageAmount);
     }
 
     private void UpdatePursuit()
     {
-        // следим за позицией игрока с некоторым запаздыванием
-        targetPosition += (playerTransform.position - targetPosition) / (targetUpdateDelayFactor * 10f);
+        CheckTargetPosition();
         zombieMovement.SetTargetPosition(targetPosition);
     }
 
     private void UpdateRagePursuit()
     {
-        targetPosition = playerTransform.position;
+        CheckTargetPosition();
         zombieMovement.SetTargetPosition(targetPosition);
 
         currentRageTime -= Time.deltaTime;
@@ -222,7 +226,7 @@ public class Zombie : DamageableObject
 
     private void UpdatePatrol()
     {
-        if (Vector3.Distance(cachedTransform.position, patrolPositions[currentPatrolPositionIndex]) <= 0.1f)
+        if (Vector3.Distance(cachedTransform.position, patrolPositions[currentPatrolPositionIndex]) <= distanceCompareDelta)
         {
             currentPatrolPositionIndex++;
             if (currentPatrolPositionIndex == patrolPositions.Count)
@@ -234,28 +238,91 @@ public class Zombie : DamageableObject
 
     private void UpdateReturnToStartPosition()
     {
-        if (Vector3.Distance(cachedTransform.position, startPosition) <= 0.1f)
+        if (Vector3.Distance(cachedTransform.position, startPosition) <= distanceCompareDelta)
         {
             SetState(State.Idle);
         }
     }
 
-    private void HandlePlayerDeath()
+    protected virtual void UpdateDead()
     {
-        SetState(State.Idle);
     }
 
-    private void Die()
+    private void HandlePlayerDeath()
     {
+        if ((currentState == State.Dead) || (currentState == State.Idle))
+            return;
+
+        if (isPatrolRole)
+            SetState(State.Patrol);
+        else
+            SetState(State.ReturnToStartPosition);
+    }
+
+    // если босса убили, то все ещё живые зомби тоже умирают )
+    private void HandleBossDeath()
+    {
+        if (currentState == State.Dead)
+            return;
+
+        Die();
+    }
+
+    protected bool IsPlayerVisible()
+    {
+        rayCasterTransform.rotation = bodyTransform.rotation;
+        rayCasterTransform.Rotate(new Vector3(0f, 0f, -visionAngle / 2));
+
+        for (float angle = -visionAngle / 2; angle <= visionAngle / 2; angle += visionCheckAngleStep)
+        {
+            rayCasterTransform.Rotate(new Vector3(0f, 0f, visionCheckAngleStep));
+            RaycastHit2D rHit = Physics2D.Raycast(cachedTransform.position, -rayCasterTransform.up, targetDetectionVisionRadius, allCollisionsMask);
+            if ((rHit.collider != null) && (rHit.collider.gameObject == player.gameObject))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    protected bool IsTargetAccesible(Vector3 targetPos)
+    {
+        Vector3 dir = targetPos - cachedTransform.position;
+        float distance = dir.magnitude;
+
+        RaycastHit2D rHit = Physics2D.Raycast(cachedTransform.position, dir, distance, obstaclesMask);
+        if (rHit.collider != null)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    private void CheckTargetPosition()
+    {
+        targetPosition += (playerTransform.position - targetPosition) / (targetUpdateDelayFactor * 10f);
+        if (IsTargetAccesible(targetPosition))
+            return;
+
+        // примитивный обход препятствий
+        Vector3 delta;
+        for (int i = -15; i <= 15; i++)
+        {
+            delta = bodyTransform.right * i;
+            if(IsTargetAccesible(targetPosition + delta))
+            {
+                targetPosition += delta;
+                return;
+            }
+        }
+    }
+
+    protected override void Die()
+    {
+        base.Die();
         SetState(State.Dead);
-
-        PlayDeathAnimation();
-
-        GetComponent<Collider2D>().enabled = false;
-        Destroy(healthBar.gameObject);
-
-        zombieMovement.StopMovement();
-        zombieMovement.enabled = false;
     }
 
     protected void PlayAttackAnimation()
@@ -263,20 +330,16 @@ public class Zombie : DamageableObject
         animator.SetTrigger(UnitAnimationIdHelper.GetId(UnitAnimationState.Shoot));
     }
 
-    protected void PlayDeathAnimation()
-    {
-        animator.SetTrigger(UnitAnimationIdHelper.GetId(UnitAnimationState.Death));
-    }
-
-    private void UpdateHealthBar()
-    {
-        healthBar.UpdateHealthState(currentHealth / healthMax);
-    }
-
     private void OnDrawGizmos()
     {
-        Gizmos.color = new Color(0f, 0f, 1f, 0.25f);
-        Gizmos.DrawWireSphere(transform.position, targetDetectionRadius);
+        if (currentState == State.Dead)
+            return;
+
+        Gizmos.color = new Color(1f, 1f, 0f, 0.25f);
+        Gizmos.DrawWireSphere(transform.position, targetDetectionVisionRadius);
+
+        Gizmos.color = new Color(1f, 0.6f, 0f, 0.25f);
+        Gizmos.DrawWireSphere(transform.position, targetDetectionAnywayRadius);
 
         Gizmos.color = new Color(1f, 0f, 0f, 0.25f);
         Gizmos.DrawWireSphere(transform.position, attackRadius);
@@ -284,11 +347,21 @@ public class Zombie : DamageableObject
         Gizmos.color = new Color(0f, 1f, 0f, 0.25f);
         Gizmos.DrawWireSphere(transform.position, pursuitRadius);
 
-        Gizmos.color = Color.magenta;
+#if UNITY_EDITOR
 
         // в PlayMode рисуем маршрут по точкам в мировых координатах
-        if(UnityEditor.EditorApplication.isPlaying)
+        if (UnityEditor.EditorApplication.isPlaying)
         {
+            // VISION ANGLE
+            Gizmos.color = Color.red;
+            rayCasterTransform.rotation = bodyTransform.rotation;
+            rayCasterTransform.Rotate(new Vector3(0f, 0f, -visionAngle/2));
+            Gizmos.DrawRay(cachedTransform.position, -rayCasterTransform.up * targetDetectionVisionRadius);
+            rayCasterTransform.Rotate(new Vector3(0f, 0f, visionAngle));
+            Gizmos.DrawRay(cachedTransform.position, -rayCasterTransform.up * targetDetectionVisionRadius);
+            // VISION ANGLE
+
+            Gizmos.color = Color.magenta;
             for (int i = 0; i < patrolPositions.Count; i++)
             {
                 if ((i + 1) < patrolPositions.Count)
@@ -300,27 +373,35 @@ public class Zombie : DamageableObject
         // в режиме редактирования рисуем маршрут по дочерним элементам patrolPoints
         else
         {
+            // VISION ANGLE
+            Gizmos.color = Color.red;
+            rayCasterTransform.rotation = bodyTransform.rotation;
+            rayCasterTransform.Rotate(new Vector3(0f, 0f, -visionAngle / 2));
+            Gizmos.DrawRay(transform.position, -rayCasterTransform.up * targetDetectionVisionRadius);
+            rayCasterTransform.Rotate(new Vector3(0f, 0f, visionAngle));
+            Gizmos.DrawRay(transform.position, -rayCasterTransform.up * targetDetectionVisionRadius);
+            // VISION ANGLE
+
+            Gizmos.color = Color.magenta;
             for (int i = 0; i < patrolPointsTransform.childCount; i++)
             {
                 if ((i + 1) < patrolPointsTransform.childCount)
-                    Gizmos.DrawLine(patrolPointsTransform.GetChild(i).transform.position, patrolPointsTransform.GetChild(i + 1).transform.position);
+                    Gizmos.DrawLine(patrolPointsTransform.GetChild(i).position, patrolPointsTransform.GetChild(i + 1).position);
                 else
-                    Gizmos.DrawLine(patrolPointsTransform.GetChild(i).transform.position, patrolPointsTransform.GetChild(0).transform.position);
+                    Gizmos.DrawLine(patrolPointsTransform.GetChild(i).position, patrolPointsTransform.GetChild(0).position);
             }
         }
+
+#endif
+
     }
 
     #endregion
 
     public override void HandleDamage(float damageAmount)
     {
-        currentHealth -= damageAmount;
-        UpdateHealthBar();
         SetState(State.RagePursuit);
 
-        if (currentHealth <= 0)
-        {
-            Die();
-        }
+        base.HandleDamage(damageAmount);
     }
 }

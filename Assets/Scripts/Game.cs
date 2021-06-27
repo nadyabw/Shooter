@@ -6,7 +6,10 @@ public class Game : MonoBehaviour
 {
     #region Variables
 
-    [SerializeField] private float restartDelay = 2f;
+    [SerializeField] private float gameOverDelay = 2f;
+    [SerializeField] private float nextLevelDelay = 1f;
+    [SerializeField] private Transform canvasTransform;
+    [SerializeField] private GameObject gameOverViewPrefab;
 
     #endregion
 
@@ -15,11 +18,15 @@ public class Game : MonoBehaviour
     private void OnEnable()
     {
         Player.OnDied += HandlePlayerDeath;
+        ZombieBoss.OnDied += HandleBossDeath;
+        GameOverView.OnClosed += Restart;
     }
 
     private void OnDisable()
     {
         Player.OnDied -= HandlePlayerDeath;
+        ZombieBoss.OnDied -= HandleBossDeath;
+        GameOverView.OnClosed -= Restart;
     }
 
     #endregion
@@ -31,17 +38,49 @@ public class Game : MonoBehaviour
         StartCoroutine(UpdateRestart());
     }
 
+    private void HandleBossDeath()
+    {
+        StartCoroutine(UpdateNextLevel());
+    }
+
     private IEnumerator UpdateRestart()
     {
-        yield return new WaitForSeconds(restartDelay);
+        yield return new WaitForSeconds(gameOverDelay);
 
-        Restart();
+        ShowGameOverView();
+    }
+
+    private IEnumerator UpdateNextLevel()
+    {
+        yield return new WaitForSeconds(nextLevelDelay);
+
+        GoToNextLevel();
+    }
+
+    private void ShowGameOverView()
+    {
+        StopAllCoroutines();
+
+        Instantiate(gameOverViewPrefab, canvasTransform);
+    }
+
+    private void GoToNextLevel()
+    {
+        StopAllCoroutines();
+
+        int nextSceneIndex = SceneManager.GetActiveScene().buildIndex + 1;
+        if (SceneManager.sceneCountInBuildSettings > nextSceneIndex)
+        {
+            SceneManager.LoadScene(nextSceneIndex);
+        }
+        else
+        {
+            SceneManager.LoadScene(0);
+        }
     }
 
     private void Restart()
     {
-        StopAllCoroutines();
-
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 

@@ -9,12 +9,12 @@ public class Player : BaseShootingUnit
     [SerializeField] private PlayerMovement playerMovement;
 
     private static Player instance;
-    private float timeToNextShoot;
 
     #endregion
 
     #region Properties
 
+    public bool IsDied { get; private set; }
     public static Player Instance => instance;
 
     #endregion
@@ -34,24 +34,21 @@ public class Player : BaseShootingUnit
 
     private void Update()
     {
-        UpdateShoot();
+        UpdateAttack();
     }
 
     #endregion
 
-    #region Private methods
+    #region Private and protected methods
 
-    private void UpdateShoot()
+    protected override void Attack()
     {
         if (IsDied)
             return;
 
-        timeToNextShoot -= Time.deltaTime;
-
-        if (Input.GetButton("Fire1") && timeToNextShoot <= 0)
+        if (Input.GetButton("Fire1"))
         {
             Shoot();
-            timeToNextShoot = shootDelay;
         }
     }
 
@@ -61,6 +58,8 @@ public class Player : BaseShootingUnit
 
         playerMovement.Stop();
         playerMovement.enabled = false;
+
+        IsDied = true;
         OnDied?.Invoke();
     }
 
