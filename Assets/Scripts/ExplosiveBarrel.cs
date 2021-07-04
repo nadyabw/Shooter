@@ -66,8 +66,7 @@ public class ExplosiveBarrel : DamageableObject, IExplosive
             DamageableObject dObj = obj.GetComponent<DamageableObject>();
             if (dObj != null)
             {
-                IExplosive iExpl = dObj.GetComponent<IExplosive>();
-                if (iExpl != null)
+                if (dObj is IExplosive iExpl)
                     iExpl.HandleChainExplosionDamage(damage);
                 else
                     dObj.HandleDamage(damage);

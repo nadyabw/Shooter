@@ -1,3 +1,4 @@
+using Lean.Pool;
 using UnityEngine;
 
 public abstract class BaseUnit : DamageableObject
@@ -5,7 +6,7 @@ public abstract class BaseUnit : DamageableObject
     #region Variables
 
     [Header("Bonuses")]
-    [SerializeField] protected BaseItem itemPrefab;
+    [SerializeField] protected BaseItem[] itemPrefabs;
     [Range(0, 100)]
     [SerializeField] protected int itemGenerationProbability;
 
@@ -24,6 +25,8 @@ public abstract class BaseUnit : DamageableObject
     [SerializeField] protected float distanceCompareDelta = 0.1f;
 
     protected Transform cachedTransform;
+    protected SpriteRenderer spriteRenderer;
+    protected Collider2D bodyCollider;
 
     protected float timeToNextAttack;
     protected float currentHealth;
@@ -36,6 +39,8 @@ public abstract class BaseUnit : DamageableObject
     {
         cachedTransform = transform;
         currentHealth = healthMax;
+        bodyCollider = GetComponent<Collider2D>();
+        spriteRenderer = GetComponentInChildren<SpriteRenderer>();
     }
 
     #endregion
@@ -46,9 +51,12 @@ public abstract class BaseUnit : DamageableObject
     {
         PlayDeathAnimation();
 
-        GetComponent<Collider2D>().enabled = false;
-        healthBar.gameObject.SetActive(false);
-        GetComponentInChildren<SpriteRenderer>().sortingOrder = 0;
+        bodyCollider.enabled = false;
+        spriteRenderer.sortingOrder = 0;
+        if(healthBar != null)
+        {
+            healthBar.gameObject.SetActive(false);
+        }
     }
 
     protected void UpdateHealthBar()
@@ -73,10 +81,16 @@ public abstract class BaseUnit : DamageableObject
 
     private void CheckItemGeneration()
     {
+        if ((itemPrefabs == null) || (itemPrefabs.Length == 0))
+            return;
+
         int randNum = Random.Range(1, 101);
-        if((randNum <= itemGenerationProbability) && (itemPrefab != null))
+        if(randNum <= itemGenerationProbability)
         {
-            Instantiate(itemPrefab, cachedTransform.position, Quaternion.identity);
+            int randIdx = Random.Range(0, itemPrefabs.Length);
+
+            BaseItem bItem = LeanPool.Spawn(itemPrefabs[randIdx], cachedTransform.position, Quaternion.identity);
+            bItem.IsFromPool = true;
         }
     }
 
@@ -84,10 +98,23 @@ public abstract class BaseUnit : DamageableObject
 
     #endregion
 
+    public float GetSize()
+    {
+        return bodyCollider.bounds.size.x;
+    }
+
+    public bool HasMaxHeatlh()
+    {
+        return Mathf.Approximately(healthMax, currentHealth);
+    }
+
     public override void HandleDamage(float damageAmount)
     {
         currentHealth -= damageAmount;
-        UpdateHealthBar();
+        if(healthBar != null)
+        {
+            UpdateHealthBar();
+        }
 
         if (currentHealth <= 0)
         {

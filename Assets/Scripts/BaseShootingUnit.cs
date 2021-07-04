@@ -1,3 +1,5 @@
+using Lean.Common.Examples;
+using Lean.Pool;
 using UnityEngine;
 
 public abstract class BaseShootingUnit : BaseUnit
@@ -12,22 +14,16 @@ public abstract class BaseShootingUnit : BaseUnit
 
     #region Protected and Private methods
 
-    protected void Shoot()
+    protected virtual void Shoot()
     {
         CreateBullet();
         PlayShootAnimation();
     }
 
-    protected void CreateBullet()
+    protected virtual void CreateBullet()
     {
-        Instantiate(bulletPrefab, bulletSpawnPoint.position, bodyTransform.rotation);
+        LeanPool.Spawn(bulletPrefab, bulletSpawnPoint.position, bodyTransform.rotation);
     }
-
-/*    protected override void Die()
-    {
-        base.Die();
-    }*/
-
     protected void PlayShootAnimation()
     {
         animator.SetTrigger(UnitAnimationIdHelper.GetId(UnitAnimationState.Shoot));

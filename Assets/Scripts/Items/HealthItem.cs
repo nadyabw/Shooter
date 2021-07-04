@@ -1,3 +1,4 @@
+using Lean.Pool;
 using UnityEngine;
 
 public class HealthItem : BaseItem
@@ -12,6 +13,15 @@ public class HealthItem : BaseItem
 
     protected override void HandleCollect()
     {
-        Player.Instance.HandleHealthCollect(healthAmount);
+        Player pl = Player.Instance;
+        if (pl.HasMaxHeatlh())
+            return;
+
+        pl.HandleHealthCollect(healthAmount);
+
+        if (IsFromPool)
+            LeanPool.Despawn(gameObject);
+        else
+            Destroy(gameObject);
     }
 }

@@ -1,3 +1,4 @@
+using Pathfinding;
 using UnityEngine;
 
 public class BaseEnemyMovement : MonoBehaviour
@@ -5,38 +6,40 @@ public class BaseEnemyMovement : MonoBehaviour
     #region Variables
 
     [Header("Base settings")]
-    [SerializeField] private Transform bodyTransform;
-    [SerializeField] private float baseSpeed = 5f;
+    [SerializeField] protected Transform bodyTransform;
+    [SerializeField] protected float baseSpeed = 5f;
 
     [Header("Animation")]
-    [SerializeField] private Animator animator;
+    [SerializeField] protected Animator animator;
 
-    private Transform cachedTransform;
+    protected Transform cachedTransform;
+    protected Transform targetTransform;
 
-    private Rigidbody2D rb;
-    private Vector3 direction;
-    private Vector3 targetPosition;
-    private float currentSpeed;
+    protected Rigidbody2D rb;
 
-    private bool isStopped;
+    protected AIPath aiPath;
+    protected AIDestinationSetter aiDestinationSetter;
 
     #endregion
 
     #region Unity lifecycle
 
-    private void Awake()
+    private void Start()
     {
-        rb = GetComponent<Rigidbody2D>();
         cachedTransform = transform;
+        rb = GetComponent<Rigidbody2D>();
+        aiPath = GetComponent<AIPath>();
+
+        // создаем пустой GameObject чтобы подсунуть его Transform в aiDestinationSetter
+        // затем просто ситуативно двигаем этот пустой GameObject в точку назначения
+        CreateTargetTransform();
+        aiDestinationSetter = GetComponent<AIDestinationSetter>();
+        aiDestinationSetter.target = targetTransform;
     }
 
-    private void Update()
+    protected virtual void Update()
     {
-        if(!isStopped)
-        {
-            Move();
-        }
-
+        animator.SetFloat(UnitAnimationIdHelper.GetId(UnitAnimationState.Move), aiPath.velocity.magnitude);
         Rotate();
     }
 
@@ -44,40 +47,49 @@ public class BaseEnemyMovement : MonoBehaviour
 
     #region Private methods
 
-    private void Move()
+    protected virtual void Rotate()
     {
-        rb.velocity = direction * currentSpeed;
-
-        animator.SetFloat(UnitAnimationIdHelper.GetId(UnitAnimationState.Move), direction.magnitude);
+        Vector3 dir = (targetTransform.position - cachedTransform.position).normalized;
+        float angle = Vector3.Angle(dir, aiPath.velocity);
+        if(angle > 45)
+        {
+            bodyTransform.up = -aiPath.velocity;
+        }
+        else
+        {
+            bodyTransform.up = -(Vector2)dir;
+        }
     }
 
-    private void Rotate()
+    private void CreateTargetTransform()
     {
-        direction = (targetPosition - cachedTransform.position).normalized;
-        bodyTransform.up = -(Vector2)direction;
+        Positions positions = FindObjectOfType<Positions>();
+        GameObject go = new GameObject();
+        go.transform.parent = positions.transform;
+        targetTransform = go.transform;
     }
 
     #endregion
 
     public void SetTargetPosition(Vector3 pos)
     {
-        targetPosition = pos;
+        targetTransform.position = pos;
     }
 
     public void StopMovement()
     {
-        isStopped = true;
+        aiPath.maxSpeed = 0;
+        aiPath.enabled = false;
         rb.velocity = Vector2.zero;
         rb.isKinematic = true;
-        currentSpeed = 0;
 
         animator.SetFloat(UnitAnimationIdHelper.GetId(UnitAnimationState.Move), 0);
     }
 
     public void StartMovement(float speedFactor = 1f)
     {
-        isStopped = false;
         rb.isKinematic = false;
-        currentSpeed = baseSpeed * speedFactor;
+        aiPath.enabled = true;
+        aiPath.maxSpeed = baseSpeed * speedFactor;
     }
 }

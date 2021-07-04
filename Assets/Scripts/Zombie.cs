@@ -10,9 +10,6 @@ public class Zombie : BaseUnit
     [Header("Vision")]
     [Range(30, 360)]
     [SerializeField] private float visionAngle;
-    [SerializeField] private float visionCheckAngleStep = 5f;
-    [SerializeField] private Transform rayCasterTransform;
-    [SerializeField] private LayerMask allCollisionsMask;
     [SerializeField] private LayerMask obstaclesMask;
 
     [Header("Base settings")]
@@ -40,7 +37,7 @@ public class Zombie : BaseUnit
     private Vector3 targetPosition;
     private Vector3 startPosition;
 
-    private State currentState;
+    protected State currentState;
     private float currentRageTime;
 
     private bool isPatrolRole;
@@ -78,7 +75,7 @@ public class Zombie : BaseUnit
         Init();
     }
 
-    private void Update()
+    protected virtual void Update()
     {
         if ((currentState != State.Dead) && !player.IsDied)
             CheckState();
@@ -106,6 +103,7 @@ public class Zombie : BaseUnit
         else
         {
             targetPosition = startPosition = cachedTransform.position;
+            zombieMovement.SetTargetPosition(targetPosition);
             SetState(State.Idle);
         }
     }
@@ -118,15 +116,15 @@ public class Zombie : BaseUnit
         {
             SetState(State.Attack);
         }
-        else if ((distance < targetDetectionVisionRadius) && (IsPlayerVisible()) && (currentState != State.RagePursuit))
+        else if ((currentState != State.RagePursuit) && (distance < targetDetectionVisionRadius) && (IsPlayerVisible()))
         {
             SetState(State.Pursuit);
         }
-        else if ((distance < targetDetectionAnywayRadius) && (currentState != State.RagePursuit))
+        else if ((currentState != State.RagePursuit) && (distance < targetDetectionAnywayRadius))
         {
             SetState(State.Pursuit);
         }
-        else if ((distance > pursuitRadius) && (currentState != State.RagePursuit))
+        else if ((currentState != State.RagePursuit) && (distance > pursuitRadius))
         {
             if (currentState == State.Pursuit && isPatrolRole)
             {
@@ -148,11 +146,13 @@ public class Zombie : BaseUnit
                 break;
             case State.ReturnToStartPosition:
                 zombieMovement.StartMovement(0.8f);
-                zombieMovement.SetTargetPosition(startPosition);
+                targetPosition = startPosition;
+                zombieMovement.SetTargetPosition(targetPosition);
                 break;
             case State.Patrol:
                 zombieMovement.StartMovement(0.5f);
-                zombieMovement.SetTargetPosition(patrolPositions[currentPatrolPositionIndex]);
+                targetPosition = patrolPositions[currentPatrolPositionIndex];
+                zombieMovement.SetTargetPosition(targetPosition);
                 break;
             case State.Pursuit:
                 zombieMovement.StartMovement();
@@ -232,7 +232,8 @@ public class Zombie : BaseUnit
             if (currentPatrolPositionIndex == patrolPositions.Count)
                 currentPatrolPositionIndex = 0;
 
-            zombieMovement.SetTargetPosition(patrolPositions[currentPatrolPositionIndex]);
+            targetPosition = patrolPositions[currentPatrolPositionIndex];
+            zombieMovement.SetTargetPosition(targetPosition);
         }
     }
 
@@ -270,23 +271,23 @@ public class Zombie : BaseUnit
 
     protected bool IsPlayerVisible()
     {
-        rayCasterTransform.rotation = bodyTransform.rotation;
-        rayCasterTransform.Rotate(new Vector3(0f, 0f, -visionAngle / 2));
+        Vector3 bodyDir = -bodyTransform.up;
+        Vector3 dirToPlayer = playerTransform.position - cachedTransform.position;
+        float angleToPlayer = Vector3.Angle(dirToPlayer, bodyDir);
 
-        for (float angle = -visionAngle / 2; angle <= visionAngle / 2; angle += visionCheckAngleStep)
+        if (angleToPlayer > (visionAngle / 2))
+            return false;
+
+        RaycastHit2D rHit = Physics2D.Raycast(cachedTransform.position, dirToPlayer, targetDetectionVisionRadius, obstaclesMask);
+        if (rHit.collider != null)
         {
-            rayCasterTransform.Rotate(new Vector3(0f, 0f, visionCheckAngleStep));
-            RaycastHit2D rHit = Physics2D.Raycast(cachedTransform.position, -rayCasterTransform.up, targetDetectionVisionRadius, allCollisionsMask);
-            if ((rHit.collider != null) && (rHit.collider.gameObject == player.gameObject))
-            {
-                return true;
-            }
+            return false;
         }
 
-        return false;
+        return true;
     }
 
-    protected bool IsTargetAccesible(Vector3 targetPos)
+    /*protected bool IsTargetAccesible(Vector3 targetPos)
     {
         Vector3 dir = targetPos - cachedTransform.position;
         float distance = dir.magnitude;
@@ -298,25 +299,11 @@ public class Zombie : BaseUnit
         }
 
         return true;
-    }
+    }*/
 
     private void CheckTargetPosition()
     {
         targetPosition += (playerTransform.position - targetPosition) / (targetUpdateDelayFactor * 10f);
-        if (IsTargetAccesible(targetPosition))
-            return;
-
-        // примитивный обход препятствий
-        Vector3 delta;
-        for (int i = -15; i <= 15; i++)
-        {
-            delta = bodyTransform.right * i;
-            if(IsTargetAccesible(targetPosition + delta))
-            {
-                targetPosition += delta;
-                return;
-            }
-        }
     }
 
     protected override void Die()
@@ -325,7 +312,7 @@ public class Zombie : BaseUnit
         SetState(State.Dead);
     }
 
-    protected void PlayAttackAnimation()
+    protected virtual void PlayAttackAnimation()
     {
         animator.SetTrigger(UnitAnimationIdHelper.GetId(UnitAnimationState.Shoot));
     }
@@ -347,20 +334,24 @@ public class Zombie : BaseUnit
         Gizmos.color = new Color(0f, 1f, 0f, 0.25f);
         Gizmos.DrawWireSphere(transform.position, pursuitRadius);
 
+        // VISION ANGLE
+        Gizmos.color = Color.red;
+        Vector3 dir = -bodyTransform.up;
+        Quaternion rotLeft = Quaternion.AngleAxis(-visionAngle / 2, bodyTransform.forward);
+        Quaternion rotRight = Quaternion.AngleAxis(visionAngle / 2, bodyTransform.forward);
+        Vector3 rayLeft = rotLeft * dir;
+        Vector3 rayRight = rotRight * dir;
+
+        Gizmos.DrawRay(transform.position, rayLeft * targetDetectionVisionRadius);
+        Gizmos.DrawRay(transform.position, dir * targetDetectionVisionRadius);
+        Gizmos.DrawRay(transform.position, rayRight * targetDetectionVisionRadius);
+        // VISION ANGLE
+
 #if UNITY_EDITOR
 
         // в PlayMode рисуем маршрут по точкам в мировых координатах
         if (UnityEditor.EditorApplication.isPlaying)
         {
-            // VISION ANGLE
-            Gizmos.color = Color.red;
-            rayCasterTransform.rotation = bodyTransform.rotation;
-            rayCasterTransform.Rotate(new Vector3(0f, 0f, -visionAngle/2));
-            Gizmos.DrawRay(cachedTransform.position, -rayCasterTransform.up * targetDetectionVisionRadius);
-            rayCasterTransform.Rotate(new Vector3(0f, 0f, visionAngle));
-            Gizmos.DrawRay(cachedTransform.position, -rayCasterTransform.up * targetDetectionVisionRadius);
-            // VISION ANGLE
-
             Gizmos.color = Color.magenta;
             for (int i = 0; i < patrolPositions.Count; i++)
             {
@@ -373,15 +364,6 @@ public class Zombie : BaseUnit
         // в режиме редактирования рисуем маршрут по дочерним элементам patrolPoints
         else
         {
-            // VISION ANGLE
-            Gizmos.color = Color.red;
-            rayCasterTransform.rotation = bodyTransform.rotation;
-            rayCasterTransform.Rotate(new Vector3(0f, 0f, -visionAngle / 2));
-            Gizmos.DrawRay(transform.position, -rayCasterTransform.up * targetDetectionVisionRadius);
-            rayCasterTransform.Rotate(new Vector3(0f, 0f, visionAngle));
-            Gizmos.DrawRay(transform.position, -rayCasterTransform.up * targetDetectionVisionRadius);
-            // VISION ANGLE
-
             Gizmos.color = Color.magenta;
             for (int i = 0; i < patrolPointsTransform.childCount; i++)
             {
